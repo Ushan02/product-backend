@@ -91,14 +91,15 @@ export async function updateProduct(req,res){
         return
 
     }
-
+    const productId = req.params.productId
     const updatingData = req.body
+    
     try{
         await Product.updateOne({
-            productId : req.params.productId,
-            updateProduct
+            productId : productId},
+            updatingData
             
-        })
+        )
 
         res.json({
             message : "Product updated succusfully"
