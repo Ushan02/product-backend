@@ -82,3 +82,33 @@ export async function deleteProduct(req,res){
     }
     
 }
+
+export async function updateProduct(req,res){
+    if(!isAdmin(req)){
+        res.status(403).json({
+            message : "your not allo to update product"
+        })
+        return
+
+    }
+
+    const updatingData = req.body
+    try{
+        await Product.updateOne({
+            productId : req.params.productId,
+            updateProduct
+            
+        })
+
+        res.json({
+            message : "Product updated succusfully"
+        })
+    }catch(err){
+        res.status(500).json({
+                message : "fail to update",
+                error : err
+            })
+
+    }
+    
+}
