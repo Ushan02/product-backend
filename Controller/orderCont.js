@@ -12,12 +12,12 @@ export async function createOrder(req, res) {
 
     const orderInfo = req.body;
 
-    // get name of current user if not provided
+
     if (orderInfo.name == null) {
         orderInfo.name = req.user.firstName + " " + req.user.lastName;
     }
 
-    // Order id generate
+ 
     let orderId = "ABC00001";
 
     const lastOrder = await Order.find().sort({ _id: -1 }).limit(1);

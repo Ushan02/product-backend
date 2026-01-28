@@ -5,7 +5,7 @@ import productRouter from './routes/productrouter.js';
 import userRouter from './routes/userrouter.js';
 import jwt from "jsonwebtoken";
 import orderrouter from './routes/orderrouter.js';
-
+import reviewrouter from './routes/reviewrouter.js';
 
 let app=express();
 //function successFully(){
@@ -49,6 +49,9 @@ mongoose.connect("mongodb+srv://admin:1234@cluster0.pb2gj4n.mongodb.net/?appName
 app.use("/product",productRouter)
 app.use("/users",userRouter)
 app.use("/order",orderrouter)
+app.use("/review",reviewrouter)
+
+
 
 
 app.listen(5000,()=>{
