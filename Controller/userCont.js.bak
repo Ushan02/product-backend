@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 
 export function createUser(req, res) {
-        if (req.body.role == "admin") {
+    if (req.body.role == "admin") {
         if (req.user != null) {
             if (req.user.role != "admin") {
                 res.status(403).json({
@@ -56,7 +56,7 @@ export function loginUser(req,res){
         (user)=>{
            if(user == null){
             res.status(404).json({
-                message : "User not found"
+                massage : "User not found"
             })
            }
 
@@ -74,12 +74,8 @@ export function loginUser(req,res){
                     },
                     "Ushan1234!!"
                 )
-                    console.log("=== LOGIN SUCCESS ===");
-                    console.log("User:", user.email);
-                    console.log("Token:", token);
-                    console.log("=====================");
                     res.json({
-                        message : "Login successfully",
+                        mesage : " login successfuly",
                         user : user,
                         token : token
                     })
