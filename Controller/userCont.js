@@ -72,7 +72,7 @@ export function loginUser(req,res){
                          img : user.img
 
                     },
-                    "Ushan1234!!"
+                    process.env.JWT_KEY
                 )
                     console.log("=== LOGIN SUCCESS ===");
                     console.log("User:", user.email);

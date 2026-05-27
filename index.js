@@ -25,7 +25,7 @@ app.use((req, res, next) => {
 
         const token = tokenString.replace("Bearer ", "");
         
-        jwt.verify(token, "Ushan1234!!", (err, decoded) => {
+        jwt.verify(token,process.env.JWT_KEY, (err, decoded) => {
             if (err) {
                 console.log("Invalid token detected");
                 return res.status(403).json({
