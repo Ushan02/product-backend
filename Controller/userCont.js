@@ -1,106 +1,96 @@
+// Controller/userCont.js
 import Users from "../models/Users.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-
+// POST /api/users/ — register new user
 export function createUser(req, res) {
-        if (req.body.role == "admin") {
-        if (req.user != null) {
-            if (req.user.role != "admin") {
-                res.status(403).json({
-                    message: "You cant create admin account"
-                });
-                return;
-            }
-        } else {
-            res.status(403).json({
-                message: "first login your account"
-            });
-            return;
-        }
+  // Block creating admin accounts unless caller is already an admin
+  if (req.body.role === "admin") {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can create admin accounts." });
     }
+  }
 
-    console.log(req.body);
+  // Check if email already registered
+  Users.findOne({ email: req.body.email })
+    .then((existing) => {
+      if (existing) {
+        return res.status(400).json({ message: "Email already in use." });
+      }
 
-    const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+      const hashedPassword = bcrypt.hashSync(req.body.password, 10);
 
-    const user = new Users({
+      const user = new Users({
         firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        password: hashedPassword,
-        role: req.body.role,
-    });
+        lastName:  req.body.lastName,
+        email:     req.body.email,
+        password:  hashedPassword,
+        // role defaults to "customer", isBlock defaults to false
+      });
 
-    user.save()
-        .then(() => {
-            res.json({
-                message: "User added successfully"
-            });
-        })
-        .catch((err) => {
-            res.status(400).json({
-                message: "Failed add User",
-                error: err.message
-            });
-        });
+      return user.save().then(() => {
+        res.status(201).json({ message: "Account created successfully." });
+      });
+    })
+    .catch((err) => {
+      res.status(500).json({ message: "Registration failed.", error: err.message });
+    });
 }
 
+// POST /api/users/login
+export function loginUser(req, res) {
+  const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required." });
+  }
 
-export function loginUser(req,res){
-    const email=req.body.email
-    const password =req.body.password
+  Users.findOne({ email })
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({ message: "No account found with that email." });
+      }
 
-    Users.findOne({email : email}).then(
-        (user)=>{
-           if(user == null){
-            res.status(404).json({
-                message : "User not found"
-            })
-           }
+      if (user.isBlock) {
+        return res.status(403).json({ message: "Your account has been blocked." });
+      }
 
-           else{
-            const isPasswordCorrect = bcrypt.compareSync(password,user.password)
-                if(isPasswordCorrect){
+      const isPasswordCorrect = bcrypt.compareSync(password, user.password);
+      if (!isPasswordCorrect) {
+        return res.status(401).json({ message: "Incorrect password." });
+      }
 
-                    const token=jwt.sign({
-                        email : user.email,
-                        firstName : user.firstName,
-                        lastName : user.lastName,
-                        role : user.role,
-                         img : user.img
+      const token = jwt.sign(
+        {
+          email:     user.email,
+          firstName: user.firstName,
+          lastName:  user.lastName,
+          role:      user.role,
+          img:       user.img,
+        },
+        process.env.JWT_KEY
+      );
 
-                    },
-                    process.env.JWT_KEY
-                )
-                    console.log("=== LOGIN SUCCESS ===");
-                    console.log("User:", user.email);
-                    console.log("Token:", token);
-                    console.log("=====================");
-                    res.json({
-                        message : "Login successfully",
-                        user : user,
-                        token : token
-                    })
-                }
-                else{
-                    res.status(401).json({
-                       message : " invalid password"
-                    })
-                }
-            }
-           }
-        )
-    }
+      res.json({
+        message: "Login successful.",
+        token,
+        user: {
+          _id:       user._id,
+          firstName: user.firstName,
+          lastName:  user.lastName,
+          email:     user.email,
+          role:      user.role,
+          img:       user.img,
+          isBlock:   user.isBlock,
+        },
+      });
+    })
+    .catch((err) => {
+      res.status(500).json({ message: "Login failed.", error: err.message });
+    });
+}
 
-    export function isAdmin(req){
-        if(req.user==null){
-            return false
-        }
-
-        if(req.user.role !="admin"){
-            return false
-        }
-        return true
-    }
+export function isAdmin(req) {
+  return req.user?.role === "admin";
+}
