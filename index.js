@@ -3,12 +3,13 @@ import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import jwt from "jsonwebtoken";
 import cors from "cors";
-
-
 import productRouter from './routes/productrouter.js';
 import userRouter from './routes/userrouter.js';
 import orderRouter from './routes/orderrouter.js';
 import reviewRouter from './routes/reviewrouter.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = 5000;
@@ -41,9 +42,9 @@ app.use((req, res, next) => {
 });
 
 
-const mongoURI = "mongodb://admin:1234@ac-b9ulqcj-shard-00-00.ba9yjkc.mongodb.net:27017,ac-b9ulqcj-shard-00-01.ba9yjkc.mongodb.net:27017,ac-b9ulqcj-shard-00-02.ba9yjkc.mongodb.net:27017/?ssl=true&replicaSet=atlas-ouys2e-shard-0&authSource=admin&appName=Cluster0";
 
-mongoose.connect(mongoURI)
+
+mongoose.connect(process.env.MONGO_URL)
     .then(() => {
         console.log("Connected to the MongoDB database successfully");
     })
