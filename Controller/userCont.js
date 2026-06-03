@@ -1,32 +1,36 @@
-// Controller/userCont.js
 import Users from "../models/Users.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 // POST /api/users/ — register new user
 export function createUser(req, res) {
-  // Block creating admin accounts unless caller is already an admin
-  if (req.body.role === "admin") {
+  const { firstName, lastName, email, password, role } = req.body;
+
+  // Only an already-authenticated admin may create another admin account
+  if (role === "admin") {
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Only admins can create admin accounts." });
     }
   }
 
-  // Check if email already registered
-  Users.findOne({ email: req.body.email })
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  Users.findOne({ email })
     .then((existing) => {
       if (existing) {
         return res.status(400).json({ message: "Email already in use." });
       }
 
-      const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+      const hashedPassword = bcrypt.hashSync(password, 10);
 
       const user = new Users({
-        firstName: req.body.firstName,
-        lastName:  req.body.lastName,
-        email:     req.body.email,
-        password:  hashedPassword,
-        // role defaults to "customer", isBlock defaults to false
+        firstName,
+        lastName,
+        email,
+        password: hashedPassword,
+        role: role === "admin" && req.user?.role === "admin" ? "admin" : "customer",
       });
 
       return user.save().then(() => {
@@ -63,14 +67,18 @@ export function loginUser(req, res) {
 
       const token = jwt.sign(
         {
+          _id:       user._id,
           email:     user.email,
           firstName: user.firstName,
           lastName:  user.lastName,
           role:      user.role,
           img:       user.img,
         },
-        process.env.JWT_KEY
+        process.env.JWT_KEY,
+        { expiresIn: "7d" }
       );
+
+      console.log("\n TOKEN:", token, "\n");
 
       res.json({
         message: "Login successful.",
@@ -91,6 +99,7 @@ export function loginUser(req, res) {
     });
 }
 
+// Helper used by other controllers
 export function isAdmin(req) {
   return req.user?.role === "admin";
 }
