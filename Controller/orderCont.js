@@ -1,5 +1,6 @@
-import Order from "../models/order.js"
+import Order from "../models/order.js";
 import Product from "../models/product.js";
+import { isAdmin } from "./userCont.js";
 
 export async function createOrder(req, res) {
     // get user information
@@ -90,7 +91,43 @@ export async function createOrder(req, res) {
     } catch (err) {
         res.status(500).json({
             message: "Failed to create order",
-            error: err
+            error: err.message
         });
+    }
+}
+
+export async function getOrders(req, res) {
+    if (!isAdmin(req)) {
+        return res.status(403).json({ message: "Admin access required." });
+    }
+    try {
+        const orders = await Order.find().sort({ date: -1 });
+        res.json(orders);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch orders.", error: err.message });
+    }
+}
+
+export async function updateOrderStatus(req, res) {
+    if (!isAdmin(req)) {
+        return res.status(403).json({ message: "Admin access required." });
+    }
+    const { status } = req.body;
+    const allowed = ["pending", "processing", "shipped", "delivered", "cancelled"];
+    if (!status || !allowed.includes(status)) {
+        return res.status(400).json({ message: "Invalid status." });
+    }
+    try {
+        const order = await Order.findOneAndUpdate(
+            { orderId: req.params.orderId },
+            { status },
+            { new: true }
+        );
+        if (!order) {
+            return res.status(404).json({ message: "Order not found." });
+        }
+        res.json({ message: "Order status updated.", order });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to update order.", error: err.message });
     }
 }

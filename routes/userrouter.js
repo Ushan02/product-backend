@@ -1,10 +1,12 @@
 // routes/userrouter.js
 import express from "express";
-import { createUser, loginUser } from "../Controller/userCont.js";
+import { createUser, loginUser, getUsers, toggleUserBlock } from "../Controller/userCont.js";
 
 const userRouter = express.Router();
 
-userRouter.post("/",      createUser);  // register
-userRouter.post("/login", loginUser);   // login
+userRouter.get("/", getUsers);
+userRouter.patch("/:id/block", toggleUserBlock);
+userRouter.post("/", createUser);
+userRouter.post("/login", loginUser);
 
 export default userRouter;

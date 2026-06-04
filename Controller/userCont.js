@@ -99,6 +99,50 @@ export function loginUser(req, res) {
     });
 }
 
+// GET /api/users — admin list (no passwords)
+export async function getUsers(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+  try {
+    const users = await Users.find().select("-password").sort({ _id: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch users.", error: err.message });
+  }
+}
+
+// PATCH /api/users/:id/block — toggle block status
+export async function toggleUserBlock(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+  try {
+    const user = await Users.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Cannot block admin accounts." });
+    }
+    user.isBlock = !user.isBlock;
+    await user.save();
+    res.json({
+      message: user.isBlock ? "User blocked." : "User unblocked.",
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isBlock: user.isBlock,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update user.", error: err.message });
+  }
+}
+
 // Helper used by other controllers
 export function isAdmin(req) {
   return req.user?.role === "admin";

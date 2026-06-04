@@ -1,5 +1,6 @@
 import Review from "../models/review.js";
-import Order from "../models/order.js"; 
+import Order from "../models/order.js";
+import { isAdmin } from "./userCont.js";
 
 
 export const addReview = async (req, res) => {
@@ -49,6 +50,21 @@ export const getReviews = async (req, res) => {
   try {
     const reviews = await Review.find().sort({ createdAt: -1 });
     res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteReview = async (req, res) => {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+  try {
+    const deleted = await Review.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Review not found." });
+    }
+    res.json({ message: "Review deleted successfully." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
