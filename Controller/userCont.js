@@ -182,6 +182,46 @@ export async function getUsers(req, res) {
   }
 }
 
+// PATCH /api/users/:id/role — promote or demote user (admin only)
+export async function updateUserRole(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+
+  const { role } = req.body;
+  if (!["admin", "customer"].includes(role)) {
+    return res.status(400).json({ message: "Role must be admin or customer." });
+  }
+
+  try {
+    const user = await Users.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (String(user._id) === String(req.user._id) && role !== "admin") {
+      return res.status(400).json({ message: "You cannot remove your own admin access." });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({
+      message: role === "admin" ? "User promoted to admin." : "User role set to customer.",
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isBlock: user.isBlock,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update role.", error: err.message });
+  }
+}
+
 // PATCH /api/users/:id/block — toggle block status
 export async function toggleUserBlock(req, res) {
   if (!isAdmin(req)) {

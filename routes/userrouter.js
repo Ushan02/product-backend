@@ -1,13 +1,29 @@
 // routes/userrouter.js
 import express from "express";
-import { createUser, loginUser, googleLogin, getUsers, toggleUserBlock } from "../Controller/userCont.js";
+import {
+  createUser,
+  loginUser,
+  googleLogin,
+  getUsers,
+  toggleUserBlock,
+  updateUserRole,
+} from "../Controller/userCont.js";
+import {
+  sendPasswordOtp,
+  verifyPasswordOtp,
+  resetPassword,
+} from "../Controller/passwordResetCont.js";
 
 const userRouter = express.Router();
 
 userRouter.get("/", getUsers);
 userRouter.patch("/:id/block", toggleUserBlock);
+userRouter.patch("/:id/role", updateUserRole);
 userRouter.post("/", createUser);
 userRouter.post("/login", loginUser);
 userRouter.post("/google", googleLogin);
+userRouter.post("/forgot-password/send-otp", sendPasswordOtp);
+userRouter.post("/forgot-password/verify-otp", verifyPasswordOtp);
+userRouter.post("/forgot-password/reset", resetPassword);
 
 export default userRouter;

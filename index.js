@@ -7,6 +7,7 @@ import userRouter from './routes/userrouter.js';
 import orderRouter from './routes/orderrouter.js';
 import reviewRouter from './routes/reviewrouter.js';
 import dotenv from 'dotenv';
+import { verifySmtpConnection } from './lib/email.js';
 
 dotenv.config();
 
@@ -37,8 +38,9 @@ app.use((req, res, next) => {
 });
 
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => {
+    .then(async () => {
         console.log("Connected to MongoDB successfully");
+        await verifySmtpConnection();
     })
     .catch((err) => {
         console.error("Database connection failed:", err.message);
