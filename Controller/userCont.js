@@ -1,6 +1,36 @@
 import Users from "../models/Users.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+
+function buildAuthResponse(user, message = "Login successful.") {
+  const token = jwt.sign(
+    {
+      _id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      img: user.img,
+    },
+    process.env.JWT_KEY,
+    { expiresIn: "7d" }
+  );
+
+  return {
+    message,
+    token,
+    user: {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      img: user.img,
+      isBlock: user.isBlock,
+    },
+  };
+}
 
 // POST /api/users/ — register new user
 export function createUser(req, res) {
@@ -60,43 +90,83 @@ export function loginUser(req, res) {
         return res.status(403).json({ message: "Your account has been blocked." });
       }
 
+      if (!user.password) {
+        return res.status(400).json({ message: "Please sign in with Google." });
+      }
+
       const isPasswordCorrect = bcrypt.compareSync(password, user.password);
       if (!isPasswordCorrect) {
         return res.status(401).json({ message: "Incorrect password." });
       }
 
-      const token = jwt.sign(
-        {
-          _id:       user._id,
-          email:     user.email,
-          firstName: user.firstName,
-          lastName:  user.lastName,
-          role:      user.role,
-          img:       user.img,
-        },
-        process.env.JWT_KEY,
-        { expiresIn: "7d" }
-      );
-
-      console.log("\n TOKEN:", token, "\n");
-
-      res.json({
-        message: "Login successful.",
-        token,
-        user: {
-          _id:       user._id,
-          firstName: user.firstName,
-          lastName:  user.lastName,
-          email:     user.email,
-          role:      user.role,
-          img:       user.img,
-          isBlock:   user.isBlock,
-        },
-      });
+      res.json(buildAuthResponse(user));
     })
     .catch((err) => {
       res.status(500).json({ message: "Login failed.", error: err.message });
     });
+}
+
+// POST /api/users/google — sign in or register with Google ID token
+export async function googleLogin(req, res) {
+  const { credential } = req.body;
+
+  if (!credential) {
+    return res.status(400).json({ message: "Google credential is required." });
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return res.status(500).json({ message: "Google login is not configured on the server." });
+  }
+
+  try {
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: clientId,
+    });
+
+    const payload = ticket.getPayload();
+    const googleId = payload.sub;
+    const email = payload.email?.toLowerCase();
+    const firstName = payload.given_name || "Google";
+    const lastName = payload.family_name || "User";
+    const picture = payload.picture;
+
+    if (!email) {
+      return res.status(400).json({ message: "Google account email is not available." });
+    }
+
+    let user = await Users.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user) {
+      if (user.isBlock) {
+        return res.status(403).json({ message: "Your account has been blocked." });
+      }
+
+      if (!user.googleId) {
+        user.googleId = googleId;
+      }
+      if (picture) {
+        user.img = picture;
+      }
+      await user.save();
+    } else {
+      user = await Users.create({
+        email,
+        firstName,
+        lastName,
+        googleId,
+        authProvider: "google",
+        img: picture,
+        role: "customer",
+      });
+    }
+
+    res.json(buildAuthResponse(user, "Google sign-in successful."));
+  } catch (err) {
+    res.status(401).json({ message: "Google sign-in failed.", error: err.message });
+  }
 }
 
 // GET /api/users — admin list (no passwords)
