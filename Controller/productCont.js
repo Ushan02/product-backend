@@ -1,6 +1,24 @@
 import Product from "../models/product.js";
 import { isAdmin } from "./userCont.js";
 
+const PRODUCT_CATEGORIES = ["laptop", "accessories"];
+
+function parseCategoryFilter(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return null;
+  }
+  const category = String(value).trim().toLowerCase();
+  return PRODUCT_CATEGORIES.includes(category) ? category : null;
+}
+
+function parseCategoryInput(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return "accessories";
+  }
+  const category = String(value).trim().toLowerCase();
+  return PRODUCT_CATEGORIES.includes(category) ? category : null;
+}
+
 function normalizeStock(value) {
   const stock = Number(value);
   if (!Number.isFinite(stock) || stock < 0) {
@@ -11,9 +29,14 @@ function normalizeStock(value) {
 
 export async function getProduct(req, res) {
   try {
-    const product = isAdmin(req)
-      ? await Product.find()
-      : await Product.find({ isAvailable: true });
+    const filter = isAdmin(req) ? {} : { isAvailable: true };
+
+    const category = parseCategoryFilter(req.query.category);
+    if (category) {
+      filter.category = category;
+    }
+
+    const product = await Product.find(filter);
     res.json(product);
   } catch (err) {
     res.status(500).json({ message: "Failed to get products", error: err.message });
@@ -31,7 +54,12 @@ export async function saveProduct(req, res) {
       return res.status(400).json({ message: "Stock must be a non-negative number." });
     }
 
-    const product = new Product({ ...req.body, stock });
+    const category = parseCategoryInput(req.body.category);
+    if (!category) {
+      return res.status(400).json({ message: "Category must be laptop or accessories." });
+    }
+
+    const product = new Product({ ...req.body, stock, category });
     await product.save();
     res.status(201).json({ message: "Product added successfully." });
   } catch (err) {
@@ -66,6 +94,14 @@ export async function updateProduct(req, res) {
         return res.status(400).json({ message: "Stock must be a non-negative number." });
       }
       update.stock = stock;
+    }
+
+    if (update.category !== undefined) {
+      const category = parseCategoryInput(update.category);
+      if (!category) {
+        return res.status(400).json({ message: "Category must be laptop or accessories." });
+      }
+      update.category = category;
     }
 
     await Product.updateOne({ productId: req.params.productId }, update);

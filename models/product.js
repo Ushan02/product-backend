@@ -13,6 +13,13 @@ const productSchema = mongoose.Schema(
             required : true
         },
 
+        category : {
+            type : String,
+            required : true,
+            enum : ["laptop", "accessories"],
+            default : "accessories"
+        },
+
         altNames : [{
             type : String
         }],
