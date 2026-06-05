@@ -1,6 +1,14 @@
 import Product from "../models/product.js";
 import { isAdmin } from "./userCont.js";
 
+function normalizeStock(value) {
+  const stock = Number(value);
+  if (!Number.isFinite(stock) || stock < 0) {
+    return null;
+  }
+  return Math.floor(stock);
+}
+
 export async function getProduct(req, res) {
   try {
     const product = isAdmin(req)
@@ -18,7 +26,12 @@ export async function saveProduct(req, res) {
   }
 
   try {
-    const product = new Product(req.body);
+    const stock = normalizeStock(req.body.stock ?? 0);
+    if (stock === null) {
+      return res.status(400).json({ message: "Stock must be a non-negative number." });
+    }
+
+    const product = new Product({ ...req.body, stock });
     await product.save();
     res.status(201).json({ message: "Product added successfully." });
   } catch (err) {
@@ -45,7 +58,17 @@ export async function updateProduct(req, res) {
     return res.status(403).json({ message: "You are not allowed to update a product." });
   }
   try {
-    await Product.updateOne({ productId: req.params.productId }, req.body);
+    const update = { ...req.body };
+
+    if (update.stock !== undefined) {
+      const stock = normalizeStock(update.stock);
+      if (stock === null) {
+        return res.status(400).json({ message: "Stock must be a non-negative number." });
+      }
+      update.stock = stock;
+    }
+
+    await Product.updateOne({ productId: req.params.productId }, update);
     res.json({ message: "Product updated successfully." });
   } catch (err) {
     res.status(500).json({ message: "Failed to update product.", error: err.message });

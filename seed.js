@@ -42,6 +42,7 @@ const sampleProducts = [
     images: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400"],
     labeledPrice: 99.99,
     price: 79.99,
+    stock: 45,
     isAvailable: true,
   },
   {
@@ -52,6 +53,7 @@ const sampleProducts = [
     images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400"],
     labeledPrice: 79.99,
     price: 59.99,
+    stock: 12,
     isAvailable: true,
   },
   {
@@ -62,6 +64,7 @@ const sampleProducts = [
     images: ["https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400"],
     labeledPrice: 18.99,
     price: 12.99,
+    stock: 3,
     isAvailable: true,
   },
   {
@@ -72,6 +75,7 @@ const sampleProducts = [
     images: ["https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400"],
     labeledPrice: 49.99,
     price: 34.99,
+    stock: 0,
     isAvailable: false,
   },
   {
@@ -82,6 +86,7 @@ const sampleProducts = [
     images: ["https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400"],
     labeledPrice: 34.99,
     price: 24.99,
+    stock: 28,
     isAvailable: true,
   },
 ];
