@@ -181,10 +181,34 @@ function buildProductFilter(req) {
   return filter;
 }
 
-// GET /api/products
+// GET /api/products — pass page & limit for pagination; omit both for full list (admin)
 export async function getProducts(req, res) {
   try {
-    const products = await Product.find(buildProductFilter(req)).sort({ _id: -1 });
+    const filter = buildProductFilter(req);
+    const page = Number(req.query.page);
+    const limit = Number(req.query.limit);
+
+    if (Number.isFinite(page) && page >= 1 && Number.isFinite(limit) && limit >= 1) {
+      const safeLimit = Math.min(Math.floor(limit), 50);
+      const safePage = Math.floor(page);
+      const [products, total] = await Promise.all([
+        Product.find(filter)
+          .sort({ _id: -1 })
+          .skip((safePage - 1) * safeLimit)
+          .limit(safeLimit),
+        Product.countDocuments(filter),
+      ]);
+
+      return res.json({
+        products,
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+      });
+    }
+
+    const products = await Product.find(filter).sort({ _id: -1 });
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: "Failed to get products", error: err.message });
