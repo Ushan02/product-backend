@@ -23,75 +23,84 @@ const sampleUsers = [
     role: "customer",
     isBlock: false,
   },
-  {
-    email: "jane@example.com",
-    firstName: "Jane",
-    lastName: "Smith",
-    password: "user123",
-    role: "customer",
-    isBlock: false,
-  },
 ];
 
 const sampleProducts = [
   {
-    productId: "PRD-001",
-    productName: "UltraBook 15 Laptop",
+    productId: "LAP-G001",
+    productName: "ASUS TUF Gaming A16",
     category: "laptop",
-    altNames: ["Ultrabook", "Business Laptop"],
-    descriptions: "15-inch laptop with 16GB RAM, 512GB SSD, and all-day battery life.",
-    images: ["https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400"],
-    labeledPrice: 1299.99,
-    price: 1099.99,
-    stock: 18,
-    isAvailable: true,
-  },
-  {
-    productId: "PRD-002",
-    productName: "Gaming Laptop Pro",
-    category: "laptop",
-    altNames: ["Gaming Notebook"],
-    descriptions: "High-performance gaming laptop with RTX graphics and 144Hz display.",
+    subCategory: "gaming",
+    brand: "ASUS",
+    specs: {
+      processorBrand: "AMD",
+      processorModel: "Ryzen 7",
+      ram: 16,
+      storageType: "SSD",
+      storageSize: 512,
+      displaySize: 16,
+      gpuBrand: "NVIDIA",
+      gpuModel: "RTX 4050",
+    },
+    altNames: ["TUF A16"],
+    descriptions: "Powerful gaming laptop with RTX 4050 graphics.",
     images: ["https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400"],
-    labeledPrice: 1599.99,
-    price: 1399.99,
-    stock: 8,
+    labeledPrice: 450000,
+    price: 399000,
+    stock: 10,
     isAvailable: true,
   },
   {
-    productId: "PRD-003",
-    productName: "Wireless Mouse",
-    category: "accessories",
-    altNames: ["Bluetooth Mouse"],
-    descriptions: "Ergonomic wireless mouse with silent clicks and long battery life.",
-    images: ["https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400"],
-    labeledPrice: 39.99,
-    price: 29.99,
-    stock: 42,
+    productId: "LAP-B001",
+    productName: "Dell Inspiron 15 Student",
+    category: "laptop",
+    subCategory: "business_and_student",
+    brand: "DELL",
+    specs: {
+      processorBrand: "Intel",
+      processorModel: "Core i5",
+      ram: 8,
+      storageType: "SSD",
+      storageSize: 256,
+      displaySize: 15.6,
+      gpuBrand: null,
+      gpuModel: null,
+    },
+    altNames: ["Inspiron 15"],
+    descriptions: "Reliable laptop for business and students.",
+    images: ["https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400"],
+    labeledPrice: 280000,
+    price: 249000,
+    stock: 15,
     isAvailable: true,
   },
   {
-    productId: "PRD-004",
-    productName: "Laptop Stand",
+    productId: "ACC-M001",
+    productName: "Logitech Wireless Mouse",
     category: "accessories",
-    altNames: ["Aluminum Stand"],
-    descriptions: "Adjustable aluminum laptop stand for better ergonomics.",
+    subCategory: "mouse",
+    brand: "LOGITECH",
+    specs: {},
+    altNames: ["M185"],
+    descriptions: "Compact wireless mouse with long battery life.",
     images: ["https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400"],
-    labeledPrice: 49.99,
-    price: 34.99,
-    stock: 0,
-    isAvailable: false,
+    labeledPrice: 4500,
+    price: 3500,
+    stock: 50,
+    isAvailable: true,
   },
   {
-    productId: "PRD-005",
-    productName: "USB-C Hub",
+    productId: "ACC-K001",
+    productName: "Mechanical Gaming Keyboard",
     category: "accessories",
-    altNames: ["Docking Hub"],
-    descriptions: "7-in-1 USB-C hub with HDMI, USB 3.0, and SD card reader.",
-    images: ["https://images.unsplash.com/photo-1625842268584-8f3296236761?w=400"],
-    labeledPrice: 59.99,
-    price: 44.99,
-    stock: 28,
+    subCategory: "keyboard",
+    brand: "REDRAGON",
+    specs: {},
+    descriptions: "RGB mechanical keyboard for gaming setups.",
+    images: ["https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400"],
+    labeledPrice: 12000,
+    price: 9500,
+    stock: 20,
     isAvailable: true,
   },
 ];
@@ -108,16 +117,11 @@ async function seed() {
     password: bcrypt.hashSync(u.password, 10),
   }));
   await Users.insertMany(users);
-
   await Product.insertMany(sampleProducts);
 
   console.log("\n✅ Sample data inserted!\n");
-  console.log("Login endpoint: POST http://localhost:5000/api/users/login\n");
-  console.log("Accounts:");
-  console.log("  Admin    → admin@myapp.com  / admin123");
-  console.log("  Customer → john@example.com  / user123");
-  console.log("  Customer → jane@example.com  / user123");
-  console.log(`\nProducts: ${sampleProducts.length} items inserted.`);
+  console.log("Admin → admin@myapp.com / admin123");
+  console.log(`Products: ${sampleProducts.length} items`);
 
   await mongoose.disconnect();
 }
