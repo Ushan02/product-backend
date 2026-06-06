@@ -6,6 +6,7 @@ import productRouter from './routes/productrouter.js';
 import userRouter from './routes/userrouter.js';
 import orderRouter from './routes/orderrouter.js';
 import reviewRouter from './routes/reviewrouter.js';
+import contactRouter from './routes/contactrouter.js';
 import dotenv from 'dotenv';
 import { verifySmtpConnection } from './lib/email.js';
 
@@ -51,6 +52,7 @@ app.use("/api/products", productRouter);
 app.use("/api/users",    userRouter);
 app.use("/api/order",    orderRouter);
 app.use("/api/review",   reviewRouter);
+app.use("/api/contact",  contactRouter);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
