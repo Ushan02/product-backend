@@ -151,8 +151,26 @@ function validateProductPayload(data, isUpdate = false) {
   return { errors, category, subCategory, brand };
 }
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function applySearchFilter(filter, searchRaw) {
+  const search = String(searchRaw || "").trim();
+  if (!search) return;
+
+  const regex = new RegExp(escapeRegex(search), "i");
+  filter.$or = [
+    { productId: regex },
+    { productName: regex },
+    { altNames: regex },
+  ];
+}
+
 function buildProductFilter(req) {
   const filter = isAdmin(req) ? {} : { isAvailable: true };
+
+  applySearchFilter(filter, req.query.search);
 
   const category = parseCategory(req.query.category);
   if (category) filter.category = category;
