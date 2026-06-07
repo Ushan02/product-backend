@@ -92,15 +92,32 @@ const productSchema = new mongoose.Schema(
       required: true,
       default: true,
     },
+    warranty: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    // Available quantity in store — reduced on orders, increased via admin restock
     stock: {
       type: Number,
       required: true,
       default: 0,
       min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: "Stock must be a whole number.",
+      },
     },
   },
   { timestamps: true }
 );
+
+productSchema.pre("save", function setDefaultWarranty(next) {
+  if (!this.warranty?.trim()) {
+    this.warranty = this.category === "laptop" ? "1 Year" : "6 months";
+  }
+  next();
+});
 
 productSchema.index({ category: 1 });
 productSchema.index({ subCategory: 1 });

@@ -1,5 +1,8 @@
 import Product, { LAPTOP_SUBS, ACCESSORY_SUBS } from "../models/product.js";
+import { attachWarranty, resolveWarranty } from "../lib/warranty.js";
 import { isAdmin } from "./userCont.js";
+import { adjustProductStock, reduceProductStock, restockProduct } from "../lib/stockService.js";
+import { parseNonNegativeInt, parsePositiveInt } from "../lib/stockNumbers.js";
 
 const CATEGORIES = ["laptop", "accessories"];
 
@@ -43,9 +46,7 @@ function parseSubCategory(value) {
 }
 
 function normalizeStock(value) {
-  const stock = Number(value);
-  if (!Number.isFinite(stock) || stock < 0) return null;
-  return Math.floor(stock);
+  return parseNonNegativeInt(value);
 }
 
 function normalizeBrand(value) {
@@ -218,7 +219,7 @@ export async function getProducts(req, res) {
       ]);
 
       return res.json({
-        products,
+        products: products.map(attachWarranty),
         total,
         page: safePage,
         limit: safeLimit,
@@ -227,7 +228,7 @@ export async function getProducts(req, res) {
     }
 
     const products = await Product.find(filter).sort({ _id: -1 });
-    res.json(products);
+    res.json(products.map(attachWarranty));
   } catch (err) {
     res.status(500).json({ message: "Failed to get products", error: err.message });
   }
@@ -303,7 +304,7 @@ export async function getProductById(req, res) {
       return res.status(404).json({ message: "Product not found." });
     }
 
-    res.json(product);
+    res.json(attachWarranty(product));
   } catch (err) {
     res.status(500).json({ message: "Internal server error.", error: err.message });
   }
@@ -333,7 +334,7 @@ export async function addProduct(req, res) {
 
     const stock = normalizeStock(req.body.stock ?? 0);
     if (stock === null) {
-      return res.status(400).json({ message: "Stock must be a non-negative number." });
+      return res.status(400).json({ message: "Stock must be a whole number (0 or greater)." });
     }
 
     const { errors, category, subCategory, brand } = validateProductPayload(req.body);
@@ -355,12 +356,13 @@ export async function addProduct(req, res) {
       images: Array.isArray(images) ? images : [],
       labeledPrice: Number(labeledPrice),
       price: Number(price),
+      warranty: resolveWarranty(category, req.body.warranty),
       stock,
       isAvailable: isAvailable !== false,
     });
 
     await product.save();
-    res.status(201).json({ message: "Product added successfully.", product });
+    res.status(201).json({ message: "Product added successfully.", product: attachWarranty(product) });
   } catch (err) {
     console.error("Add product error:", err.message);
     res.status(500).json({ message: "Failed to add product.", error: err.message });
@@ -393,7 +395,7 @@ export async function updateProduct(req, res) {
     if (update.stock !== undefined) {
       const stock = normalizeStock(update.stock);
       if (stock === null) {
-        return res.status(400).json({ message: "Stock must be a non-negative number." });
+        return res.status(400).json({ message: "Stock must be a whole number (0 or greater)." });
       }
       update.stock = stock;
     }
@@ -401,6 +403,15 @@ export async function updateProduct(req, res) {
     if (category) update.category = category;
     if (subCategory) update.subCategory = subCategory;
     if (brand) update.brand = brand;
+
+    const effectiveCategory = category || existing.category;
+    if (update.warranty !== undefined) {
+      update.warranty = resolveWarranty(effectiveCategory, update.warranty);
+    } else if (category && category !== existing.category) {
+      update.warranty = resolveWarranty(category, "");
+    } else if (!existing.warranty?.trim()) {
+      update.warranty = resolveWarranty(effectiveCategory, "");
+    }
 
     const effectiveSub = subCategory || existing.subCategory;
     if (update.specs || update.processorBrand || effectiveSub) {
@@ -421,9 +432,91 @@ export async function updateProduct(req, res) {
 
     await Product.updateOne({ productId: req.params.id }, { $set: update });
     const product = await Product.findOne({ productId: req.params.id });
-    res.json({ message: "Product updated successfully.", product });
+    res.json({ message: "Product updated successfully.", product: attachWarranty(product) });
   } catch (err) {
     res.status(500).json({ message: "Failed to update product.", error: err.message });
+  }
+}
+
+// PATCH /api/products/:id/reduce-stock — decrease quantity (orders / admin)
+export async function reduceStock(req, res) {
+  const quantity = parsePositiveInt(req.body.quantity);
+  if (quantity === null) {
+    return res.status(400).json({ message: "Quantity must be a whole number of at least 1." });
+  }
+
+  const isOrderFlow = req.body.internal === true;
+  if (!isOrderFlow && !isAdmin(req)) {
+    return res.status(403).json({ message: "You are not allowed to reduce stock." });
+  }
+
+  try {
+    const product = await reduceProductStock(req.params.id, quantity);
+    res.json({
+      message: "Stock reduced successfully.",
+      product,
+      previousStock: product.stock + quantity,
+      newStock: product.stock,
+    });
+  } catch (err) {
+    const status =
+      err.message.includes("not found") ? 404 : err.message.includes("Insufficient") ? 400 : 400;
+    res.status(status).json({ message: err.message });
+  }
+}
+
+// PATCH /api/products/:id/restock — admin add quantity
+export async function restock(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "You are not allowed to restock products." });
+  }
+
+  const quantity = parsePositiveInt(req.body.quantity);
+  if (quantity === null) {
+    return res.status(400).json({ message: "Restock quantity must be a whole number of at least 1." });
+  }
+
+  try {
+    const existing = await Product.findOne({ productId: req.params.id });
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found." });
+    }
+
+    const product = await restockProduct(req.params.id, quantity);
+    res.json({
+      message: `Added ${quantity} units to stock.`,
+      product,
+      previousStock: existing.stock,
+      newStock: product.stock,
+    });
+  } catch (err) {
+    const status = err.message.includes("not found") ? 404 : 400;
+    res.status(status).json({ message: err.message });
+  }
+}
+
+// PATCH /api/products/:id/stock — admin adjust quantity (+/-) legacy
+export async function adjustStock(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "You are not allowed to update stock." });
+  }
+
+  const rawDelta = req.body.delta;
+  const magnitude = parsePositiveInt(Math.abs(rawDelta));
+  if (magnitude === null || Number(rawDelta) === 0) {
+    return res.status(400).json({ message: "Delta must be a non-zero whole number." });
+  }
+  const delta = Number(rawDelta) < 0 ? -magnitude : magnitude;
+
+  try {
+    const product = await adjustProductStock(req.params.id, delta);
+    res.json({
+      message: delta > 0 ? "Stock increased." : "Stock decreased.",
+      product,
+    });
+  } catch (err) {
+    const status = err.message.includes("not found") ? 404 : 400;
+    res.status(status).json({ message: err.message });
   }
 }
 

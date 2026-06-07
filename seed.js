@@ -48,6 +48,7 @@ const sampleProducts = [
     labeledPrice: 450000,
     price: 399000,
     stock: 10,
+    warranty: "1 Year",
     isAvailable: true,
   },
   {
@@ -72,6 +73,7 @@ const sampleProducts = [
     labeledPrice: 280000,
     price: 249000,
     stock: 15,
+    warranty: "1 Year",
     isAvailable: true,
   },
   {
@@ -87,6 +89,7 @@ const sampleProducts = [
     labeledPrice: 4500,
     price: 3500,
     stock: 50,
+    warranty: "6 months",
     isAvailable: true,
   },
   {
@@ -101,6 +104,7 @@ const sampleProducts = [
     labeledPrice: 12000,
     price: 9500,
     stock: 20,
+    warranty: "6 months",
     isAvailable: true,
   },
 ];
