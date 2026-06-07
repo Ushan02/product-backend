@@ -181,8 +181,6 @@ export async function createOrder(req, res) {
 
   }
 
-
-
   const { method: paymentMethod, error: methodError } = resolvePaymentMethod(
 
     orderInfo.paymentMethod,
