@@ -29,6 +29,20 @@ const orderSchema = mongoose.Schema({
         required : true,
         default : "pending"
     },
+    paymentMethod : {
+        type : String,
+        enum : ["cod", "stripe"],
+        default : "cod"
+    },
+    paymentStatus : {
+        type : String,
+        enum : ["pending_cod", "awaiting_payment", "paid", "failed", "cancelled"],
+        default : "pending_cod"
+    },
+    stripeSessionId : {
+        type : String,
+        default : null
+    },
     labelTotal : {
         type : String,
         required : true

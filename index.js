@@ -7,8 +7,10 @@ import userRouter from './routes/userrouter.js';
 import orderRouter from './routes/orderrouter.js';
 import reviewRouter from './routes/reviewrouter.js';
 import contactRouter from './routes/contactrouter.js';
+import paymentRouter from './routes/paymentrouter.js';
 import dotenv from 'dotenv';
 import { verifySmtpConnection } from './lib/email.js';
+import { getPaymentSettings } from './lib/paymentConfig.js';
 
 dotenv.config();
 
@@ -53,7 +55,10 @@ app.use("/api/users",    userRouter);
 app.use("/api/order",    orderRouter);
 app.use("/api/review",   reviewRouter);
 app.use("/api/contact",  contactRouter);
+app.use("/api/payment",  paymentRouter);
 
 app.listen(PORT, () => {
+    const payment = getPaymentSettings();
     console.log(`Server running on port ${PORT}`);
+    console.log(`Payment mode: ${payment.mode}${payment.mode === "stripe" ? " (Stripe)" : " (Cash on Delivery)"}`);
 });
