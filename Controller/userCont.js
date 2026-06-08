@@ -1,7 +1,11 @@
 import Users from "../models/Users.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { OAuth2Client } from "google-auth-library";
+import {
+  getGoogleAuthPublicConfig,
+  verifyGoogleCredential,
+  mapGoogleVerifyError,
+} from "../lib/googleAuth.js";
 
 function buildAuthResponse(user, message = "Login successful.") {
   const token = jwt.sign(
@@ -106,6 +110,11 @@ export function loginUser(req, res) {
     });
 }
 
+// GET /api/users/auth-config — public Google OAuth setup check
+export function getAuthConfig(req, res) {
+  res.json(getGoogleAuthPublicConfig());
+}
+
 // POST /api/users/google — sign in or register with Google ID token
 export async function googleLogin(req, res) {
   const { credential } = req.body;
@@ -114,19 +123,18 @@ export async function googleLogin(req, res) {
     return res.status(400).json({ message: "Google credential is required." });
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    return res.status(500).json({ message: "Google login is not configured on the server." });
+  let payload;
+  try {
+    payload = await verifyGoogleCredential(credential);
+  } catch (err) {
+    const mapped = mapGoogleVerifyError(err);
+    return res.status(mapped.status).json({
+      message: mapped.message,
+      error: mapped.error,
+    });
   }
 
   try {
-    const client = new OAuth2Client(clientId);
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: clientId,
-    });
-
-    const payload = ticket.getPayload();
     const googleId = payload.sub;
     const email = payload.email?.toLowerCase();
     const firstName = payload.given_name || "Google";
@@ -165,7 +173,7 @@ export async function googleLogin(req, res) {
 
     res.json(buildAuthResponse(user, "Google sign-in successful."));
   } catch (err) {
-    res.status(401).json({ message: "Google sign-in failed.", error: err.message });
+    res.status(500).json({ message: "Google sign-in failed.", error: err.message });
   }
 }
 

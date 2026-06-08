@@ -11,13 +11,21 @@ import paymentRouter from './routes/paymentrouter.js';
 import dotenv from 'dotenv';
 import { verifySmtpConnection } from './lib/email.js';
 import { getPaymentSettings } from './lib/paymentConfig.js';
+import { isGoogleAuthConfigured, getGoogleClientId } from './lib/googleAuth.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+const { frontendUrl } = getPaymentSettings();
+const corsOrigins = [...new Set([frontendUrl, "http://localhost:5173"].filter(Boolean))];
+
+app.use(
+  cors({
+    origin: corsOrigins,
+  })
+);
 app.use(express.json());  // use built-in express.json() — body-parser v2 breaks on Express 5
 
 // JWT middleware — decode token if present; never block unauthenticated requests here
@@ -61,4 +69,10 @@ app.listen(PORT, () => {
     const payment = getPaymentSettings();
     console.log(`Server running on port ${PORT}`);
     console.log(`Payment mode: ${payment.mode}${payment.mode === "stripe" ? " (Stripe)" : " (Cash on Delivery)"}`);
+    if (isGoogleAuthConfigured()) {
+        console.log(`Google OAuth: configured (${getGoogleClientId().slice(0, 20)}...)`);
+    } else {
+        console.warn("Google OAuth: GOOGLE_CLIENT_ID missing — Google login will fail on server.");
+    }
+    console.log(`CORS origins: ${corsOrigins.join(", ")}`);
 });

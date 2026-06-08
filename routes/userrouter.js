@@ -4,6 +4,7 @@ import {
   createUser,
   loginUser,
   googleLogin,
+  getAuthConfig,
   getUsers,
   toggleUserBlock,
   updateUserRole,
@@ -16,6 +17,7 @@ import {
 
 const userRouter = express.Router();
 
+userRouter.get("/auth-config", getAuthConfig);
 userRouter.get("/", getUsers);
 userRouter.patch("/:id/block", toggleUserBlock);
 userRouter.patch("/:id/role", updateUserRole);
