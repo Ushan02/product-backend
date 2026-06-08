@@ -415,6 +415,30 @@ export async function getOrders(req, res) {
 
 
 
+export async function getMyOrders(req, res) {
+
+  if (req.user == null) {
+
+    return res.status(403).json({ message: "Please login and try again." });
+
+  }
+
+  try {
+
+    const orders = await Order.find({ email: req.user.email }).sort({ date: -1 });
+
+    res.json(orders);
+
+  } catch (err) {
+
+    res.status(500).json({ message: "Failed to fetch your orders.", error: err.message });
+
+  }
+
+}
+
+
+
 export async function cancelPendingOrder(req, res) {
 
   if (req.user == null) {

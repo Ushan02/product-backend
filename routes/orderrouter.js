@@ -6,6 +6,8 @@ import {
 
   getOrders,
 
+  getMyOrders,
+
   updateOrderStatus,
 
   cancelPendingOrder,
@@ -17,6 +19,7 @@ import { createAdminOrder } from "../Controller/adminOrderCont.js";
 
 const orderrouter = express.Router();
 
+orderrouter.get("/my-orders", getMyOrders);
 orderrouter.get("/", getOrders);
 orderrouter.post("/admin", createAdminOrder);
 orderrouter.post("/", createOrder);
