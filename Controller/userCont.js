@@ -9,7 +9,7 @@ import {
 import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
 
 const CUSTOMER_ID_MSG =
-  "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).";
+  "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).";
 
 async function resolveCustomerId(rawCustomerId, excludeUserId = null) {
   const normalized = normalizeCustomerId(rawCustomerId);

@@ -107,7 +107,7 @@ export async function createAdminOrder(req, res) {
   if (customerId) {
     if (!isValidCustomerId(customerId)) {
       return res.status(400).json({
-        message: "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).",
+        message: "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).",
       });
     }
     const customer = await Users.findOne({ customerId, role: "customer" });
