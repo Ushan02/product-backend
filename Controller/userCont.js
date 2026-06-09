@@ -407,7 +407,7 @@ export async function updateMyProfile(req, res) {
     return res.status(400).json({ message: "Customer ID cannot be updated from your profile." });
   }
 
-  const { firstName, lastName, email, password } = req.body;
+  const { firstName, lastName, email } = req.body;
 
   try {
     const user = await Users.findById(req.user._id);
@@ -435,13 +435,6 @@ export async function updateMyProfile(req, res) {
         return res.status(400).json({ message: "Email already in use." });
       }
       user.email = trimmed;
-    }
-
-    if (password !== undefined && String(password).trim()) {
-      if (String(password).length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters." });
-      }
-      user.password = bcrypt.hashSync(String(password), 10);
     }
 
     await user.save();
