@@ -7,6 +7,7 @@ import {
   getAuthConfig,
   getUsers,
   getCurrentUser,
+  updateMyProfile,
   setMyCustomerId,
   toggleUserBlock,
   updateUserRole,
@@ -23,6 +24,7 @@ const userRouter = express.Router();
 
 userRouter.get("/auth-config", getAuthConfig);
 userRouter.get("/me", getCurrentUser);
+userRouter.patch("/me", updateMyProfile);
 userRouter.patch("/me/customer-id", setMyCustomerId);
 userRouter.get("/", getUsers);
 userRouter.patch("/:id/block", toggleUserBlock);

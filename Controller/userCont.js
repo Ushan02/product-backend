@@ -253,6 +253,7 @@ export async function getCurrentUser(req, res) {
       img: user.img,
       isBlock: user.isBlock,
       customerId: user.customerId || null,
+      authProvider: user.authProvider || "local",
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch profile.", error: err.message });
@@ -393,6 +394,66 @@ export async function toggleUserBlock(req, res) {
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to update user.", error: err.message });
+  }
+}
+
+// PATCH /api/users/me — update own profile (not customerId)
+export async function updateMyProfile(req, res) {
+  if (!req.user?._id) {
+    return res.status(403).json({ message: "Please login and try again." });
+  }
+
+  if (req.body.customerId !== undefined) {
+    return res.status(400).json({ message: "Customer ID cannot be updated from your profile." });
+  }
+
+  const { firstName, lastName, email, password } = req.body;
+
+  try {
+    const user = await Users.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (firstName !== undefined) {
+      const trimmed = String(firstName).trim();
+      if (!trimmed) return res.status(400).json({ message: "First name is required." });
+      user.firstName = trimmed;
+    }
+
+    if (lastName !== undefined) {
+      const trimmed = String(lastName).trim();
+      if (!trimmed) return res.status(400).json({ message: "Last name is required." });
+      user.lastName = trimmed;
+    }
+
+    if (email !== undefined) {
+      const trimmed = String(email).trim().toLowerCase();
+      if (!trimmed) return res.status(400).json({ message: "Email is required." });
+      const duplicate = await Users.findOne({ email: trimmed, _id: { $ne: user._id } });
+      if (duplicate) {
+        return res.status(400).json({ message: "Email already in use." });
+      }
+      user.email = trimmed;
+    }
+
+    if (password !== undefined && String(password).trim()) {
+      if (String(password).length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters." });
+      }
+      user.password = bcrypt.hashSync(String(password), 10);
+    }
+
+    await user.save();
+
+    const auth = buildAuthResponse(user, "Profile updated.");
+    res.json({
+      message: "Profile updated.",
+      user: auth.user,
+      token: auth.token,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update profile.", error: err.message });
   }
 }
 
