@@ -6,7 +6,24 @@ import {
   verifyGoogleCredential,
   mapGoogleVerifyError,
 } from "../lib/googleAuth.js";
-import { generateUniqueCustomerId, isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
+import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
+
+const CUSTOMER_ID_MSG =
+  "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).";
+
+async function resolveCustomerId(rawCustomerId, excludeUserId = null) {
+  const normalized = normalizeCustomerId(rawCustomerId);
+  if (!isValidCustomerId(normalized)) {
+    return { error: CUSTOMER_ID_MSG };
+  }
+  const query = { customerId: normalized };
+  if (excludeUserId) query._id = { $ne: excludeUserId };
+  const duplicate = await Users.findOne(query);
+  if (duplicate) {
+    return { error: "Customer ID already in use." };
+  }
+  return { customerId: normalized };
+}
 
 function serializeUser(user) {
   return {
@@ -54,7 +71,7 @@ function buildAuthResponse(user, message = "Login successful.") {
 
 // POST /api/users/ — register new user
 export async function createUser(req, res) {
-  const { firstName, lastName, email, password, role } = req.body;
+  const { firstName, lastName, email, password, role, customerId } = req.body;
 
   // Only an already-authenticated admin may create another admin account
   if (role === "admin") {
@@ -85,7 +102,11 @@ export async function createUser(req, res) {
     });
 
     if (assignedRole === "customer") {
-      user.customerId = await generateUniqueCustomerId();
+      const resolved = await resolveCustomerId(customerId);
+      if (resolved.error) {
+        return res.status(400).json({ message: resolved.error });
+      }
+      user.customerId = resolved.customerId;
     }
 
     await user.save();
@@ -140,7 +161,7 @@ export function getAuthConfig(req, res) {
 
 // POST /api/users/google — sign in or register with Google ID token
 export async function googleLogin(req, res) {
-  const { credential } = req.body;
+  const { credential, customerId } = req.body;
 
   if (!credential) {
     return res.status(400).json({ message: "Google credential is required." });
@@ -183,6 +204,16 @@ export async function googleLogin(req, res) {
       }
       await user.save();
     } else {
+      const resolved = await resolveCustomerId(customerId);
+      if (resolved.error) {
+        return res.status(400).json({
+          message:
+            resolved.error === CUSTOMER_ID_MSG
+              ? "Customer ID is required to create a new account."
+              : resolved.error,
+        });
+      }
+
       user = await Users.create({
         email,
         firstName,
@@ -191,13 +222,8 @@ export async function googleLogin(req, res) {
         authProvider: "google",
         img: picture,
         role: "customer",
-        customerId: await generateUniqueCustomerId(),
+        customerId: resolved.customerId,
       });
-    }
-
-    if (!user.customerId && user.role === "customer") {
-      user.customerId = await generateUniqueCustomerId();
-      await user.save();
     }
 
     res.json(buildAuthResponse(user, "Google sign-in successful."));
@@ -216,11 +242,6 @@ export async function getCurrentUser(req, res) {
     const user = await Users.findById(req.user._id).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found." });
-    }
-
-    if (!user.customerId && user.role === "customer") {
-      user.customerId = await generateUniqueCustomerId();
-      await user.save();
     }
 
     res.json({
@@ -288,17 +309,11 @@ export async function updateUserDetails(req, res) {
     }
 
     if (customerId !== undefined && user.role === "customer") {
-      const normalized = normalizeCustomerId(customerId);
-      if (!isValidCustomerId(normalized)) {
-        return res.status(400).json({
-          message: "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).",
-        });
+      const resolved = await resolveCustomerId(customerId, user._id);
+      if (resolved.error) {
+        return res.status(400).json({ message: resolved.error });
       }
-      const duplicateId = await Users.findOne({ customerId: normalized, _id: { $ne: user._id } });
-      if (duplicateId) {
-        return res.status(400).json({ message: "Customer ID already in use." });
-      }
-      user.customerId = normalized;
+      user.customerId = resolved.customerId;
     }
 
     if (password !== undefined && String(password).trim()) {
@@ -344,8 +359,6 @@ export async function updateUserRole(req, res) {
 
     if (role === "admin") {
       user.customerId = null;
-    } else if (!user.customerId) {
-      user.customerId = await generateUniqueCustomerId();
     }
 
     await user.save();
@@ -380,6 +393,39 @@ export async function toggleUserBlock(req, res) {
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to update user.", error: err.message });
+  }
+}
+
+// PATCH /api/users/me/customer-id — customer sets their own ID
+export async function setMyCustomerId(req, res) {
+  if (!req.user?._id) {
+    return res.status(403).json({ message: "Please login and try again." });
+  }
+
+  try {
+    const user = await Users.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    if (user.role !== "customer") {
+      return res.status(400).json({ message: "Only customer accounts use a customer ID." });
+    }
+
+    const resolved = await resolveCustomerId(req.body.customerId, user._id);
+    if (resolved.error) {
+      return res.status(400).json({ message: resolved.error });
+    }
+
+    user.customerId = resolved.customerId;
+    await user.save();
+
+    res.json({
+      message: "Customer ID saved.",
+      customerId: user.customerId,
+      user: serializeUser(user),
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to save customer ID.", error: err.message });
   }
 }
 

@@ -13,8 +13,6 @@ import dotenv from 'dotenv';
 import { verifySmtpConnection } from './lib/email.js';
 import { getPaymentSettings } from './lib/paymentConfig.js';
 import { isGoogleAuthConfigured, getGoogleClientId } from './lib/googleAuth.js';
-import { backfillCustomerIds } from './lib/backfillCustomerIds.js';
-
 dotenv.config();
 
 const app = express();
@@ -53,7 +51,6 @@ app.use((req, res, next) => {
 mongoose.connect(process.env.MONGO_URL)
     .then(async () => {
         console.log("Connected to MongoDB successfully");
-        await backfillCustomerIds();
         await verifySmtpConnection();
     })
     .catch((err) => {
