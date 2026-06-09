@@ -1,6 +1,8 @@
 import Order from "../models/order.js";
 import Product from "../models/product.js";
+import Users from "../models/Users.js";
 import { isAdmin } from "./userCont.js";
+import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
 import { finalizeOrderStock } from "../lib/stockService.js";
 import {
   resolveAdminPaymentMethod,
@@ -98,7 +100,23 @@ export async function createAdminOrder(req, res) {
     return res.status(400).json({ message: methodError });
   }
 
-  if (!orderInfo.name?.trim() || !orderInfo.email?.trim()) {
+  let customerName = orderInfo.name?.trim() || "";
+  let customerEmail = orderInfo.email?.trim() || "";
+  let customerId = normalizeCustomerId(orderInfo.customerId);
+
+  if (customerId) {
+    if (!isValidCustomerId(customerId)) {
+      return res.status(400).json({ message: "Customer ID must be 10 or 11 digits ending with V." });
+    }
+    const customer = await Users.findOne({ customerId, role: "customer" });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found for this ID." });
+    }
+    customerName = customerName || `${customer.firstName} ${customer.lastName}`.trim();
+    customerEmail = customerEmail || customer.email;
+  }
+
+  if (!customerName || !customerEmail) {
     return res.status(400).json({ message: "Customer name and email are required." });
   }
   if (!orderInfo.phone || !orderInfo.address?.trim()) {
@@ -126,8 +144,9 @@ export async function createAdminOrder(req, res) {
 
     const order = new Order({
       orderId,
-      name: orderInfo.name.trim(),
-      email: orderInfo.email.trim(),
+      name: customerName,
+      email: customerEmail,
+      customerId: customerId || null,
       phone: orderInfo.phone,
       address: orderInfo.address.trim(),
       products,

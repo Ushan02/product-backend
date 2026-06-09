@@ -22,6 +22,18 @@ const orderSchema = mongoose.Schema({
 
     },
 
+    customerId : {
+
+        type : String,
+
+        default : null,
+
+        trim : true,
+
+        uppercase : true,
+
+    },
+
 
 
     name : {

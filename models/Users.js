@@ -54,6 +54,14 @@ const usersSchema = mongoose.Schema(
             required : false,
             default:"https://share.google/EQKYEoTYMiXEIxPVz"
         },
+
+        customerId : {
+            type : String,
+            unique : true,
+            sparse : true,
+            trim : true,
+            uppercase : true,
+        },
     }
 )
 

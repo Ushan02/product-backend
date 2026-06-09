@@ -8,10 +8,12 @@ import orderRouter from './routes/orderrouter.js';
 import reviewRouter from './routes/reviewrouter.js';
 import contactRouter from './routes/contactrouter.js';
 import paymentRouter from './routes/paymentrouter.js';
+import repairRouter from './routes/repairrouter.js';
 import dotenv from 'dotenv';
 import { verifySmtpConnection } from './lib/email.js';
 import { getPaymentSettings } from './lib/paymentConfig.js';
 import { isGoogleAuthConfigured, getGoogleClientId } from './lib/googleAuth.js';
+import { backfillCustomerIds } from './lib/backfillCustomerIds.js';
 
 dotenv.config();
 
@@ -51,6 +53,7 @@ app.use((req, res, next) => {
 mongoose.connect(process.env.MONGO_URL)
     .then(async () => {
         console.log("Connected to MongoDB successfully");
+        await backfillCustomerIds();
         await verifySmtpConnection();
     })
     .catch((err) => {
@@ -64,6 +67,7 @@ app.use("/api/order",    orderRouter);
 app.use("/api/review",   reviewRouter);
 app.use("/api/contact",  contactRouter);
 app.use("/api/payment",  paymentRouter);
+app.use("/api/repairs",  repairRouter);
 
 app.listen(PORT, () => {
     const payment = getPaymentSettings();

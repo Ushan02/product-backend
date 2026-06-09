@@ -6,6 +6,7 @@ import {
   verifyGoogleCredential,
   mapGoogleVerifyError,
 } from "../lib/googleAuth.js";
+import { generateUniqueCustomerId } from "../lib/customerId.js";
 
 function buildAuthResponse(user, message = "Login successful.") {
   const token = jwt.sign(
@@ -32,12 +33,13 @@ function buildAuthResponse(user, message = "Login successful.") {
       role: user.role,
       img: user.img,
       isBlock: user.isBlock,
+      customerId: user.customerId || null,
     },
   };
 }
 
 // POST /api/users/ — register new user
-export function createUser(req, res) {
+export async function createUser(req, res) {
   const { firstName, lastName, email, password, role } = req.body;
 
   // Only an already-authenticated admin may create another admin account
@@ -51,29 +53,36 @@ export function createUser(req, res) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
-  Users.findOne({ email })
-    .then((existing) => {
-      if (existing) {
-        return res.status(400).json({ message: "Email already in use." });
-      }
+  try {
+    const existing = await Users.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email already in use." });
+    }
 
-      const hashedPassword = bcrypt.hashSync(password, 10);
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const assignedRole = role === "admin" && req.user?.role === "admin" ? "admin" : "customer";
 
-      const user = new Users({
-        firstName,
-        lastName,
-        email,
-        password: hashedPassword,
-        role: role === "admin" && req.user?.role === "admin" ? "admin" : "customer",
-      });
-
-      return user.save().then(() => {
-        res.status(201).json({ message: "Account created successfully." });
-      });
-    })
-    .catch((err) => {
-      res.status(500).json({ message: "Registration failed.", error: err.message });
+    const user = new Users({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      role: assignedRole,
     });
+
+    if (assignedRole === "customer") {
+      user.customerId = await generateUniqueCustomerId();
+    }
+
+    await user.save();
+
+    res.status(201).json({
+      message: "Account created successfully.",
+      customerId: user.customerId || null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Registration failed.", error: err.message });
+  }
 }
 
 // POST /api/users/login
@@ -168,12 +177,50 @@ export async function googleLogin(req, res) {
         authProvider: "google",
         img: picture,
         role: "customer",
+        customerId: await generateUniqueCustomerId(),
       });
+    }
+
+    if (!user.customerId && user.role === "customer") {
+      user.customerId = await generateUniqueCustomerId();
+      await user.save();
     }
 
     res.json(buildAuthResponse(user, "Google sign-in successful."));
   } catch (err) {
     res.status(500).json({ message: "Google sign-in failed.", error: err.message });
+  }
+}
+
+// GET /api/users/me — current user profile
+export async function getCurrentUser(req, res) {
+  if (!req.user?._id) {
+    return res.status(403).json({ message: "Please login and try again." });
+  }
+
+  try {
+    const user = await Users.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (!user.customerId && user.role === "customer") {
+      user.customerId = await generateUniqueCustomerId();
+      await user.save();
+    }
+
+    res.json({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      img: user.img,
+      isBlock: user.isBlock,
+      customerId: user.customerId || null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch profile.", error: err.message });
   }
 }
 

@@ -2,6 +2,8 @@ import Order from "../models/order.js";
 
 import Product from "../models/product.js";
 
+import Users from "../models/Users.js";
+
 import { isAdmin } from "./userCont.js";
 
 import { getPaymentSettings, isStripeEnabled } from "../lib/paymentConfig.js";
@@ -273,6 +275,8 @@ export async function createOrder(req, res) {
 
     const orderId = generateOrderId(lastOrder);
 
+    const dbUser = await Users.findOne({ email: req.user.email });
+
 
 
     const order = new Order({
@@ -282,6 +286,8 @@ export async function createOrder(req, res) {
       name: orderInfo.name,
 
       email: req.user.email,
+
+      customerId: dbUser?.customerId || orderInfo.customerId || null,
 
       phone: orderInfo.phone,
 
