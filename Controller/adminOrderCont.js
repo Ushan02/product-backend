@@ -2,7 +2,11 @@ import Order from "../models/order.js";
 import Product from "../models/product.js";
 import Users from "../models/Users.js";
 import { isAdmin } from "./userCont.js";
-import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
+import {
+  CUSTOMER_ID_MSG,
+  isValidCustomerId,
+  normalizeCustomerId,
+} from "../lib/customerId.js";
 import { finalizeOrderStock } from "../lib/stockService.js";
 import {
   resolveAdminPaymentMethod,
@@ -107,7 +111,7 @@ export async function createAdminOrder(req, res) {
   if (customerId) {
     if (!isValidCustomerId(customerId)) {
       return res.status(400).json({
-        message: "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).",
+        message: CUSTOMER_ID_MSG,
       });
     }
     const customer = await Users.findOne({ customerId, role: "customer" });

@@ -6,10 +6,11 @@ import {
   verifyGoogleCredential,
   mapGoogleVerifyError,
 } from "../lib/googleAuth.js";
-import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
-
-const CUSTOMER_ID_MSG =
-  "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).";
+import {
+  CUSTOMER_ID_MSG,
+  isValidCustomerId,
+  normalizeCustomerId,
+} from "../lib/customerId.js";
 
 async function resolveCustomerId(rawCustomerId, excludeUserId = null) {
   const normalized = normalizeCustomerId(rawCustomerId);

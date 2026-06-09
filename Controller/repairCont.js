@@ -2,7 +2,11 @@ import Repair from "../models/repair.js";
 import Order from "../models/order.js";
 import Users from "../models/Users.js";
 import { isAdmin } from "./userCont.js";
-import { isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
+import {
+  CUSTOMER_ID_MSG,
+  isValidCustomerId,
+  normalizeCustomerId,
+} from "../lib/customerId.js";
 
 async function generateRepairId() {
   const lastRepair = await Repair.find().sort({ _id: -1 }).limit(1);
@@ -38,7 +42,7 @@ export async function createRepair(req, res) {
 
   if (!isValidCustomerId(customerId)) {
     return res.status(400).json({
-      message: "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).",
+      message: CUSTOMER_ID_MSG,
     });
   }
   if (!orderId || !productId) {
@@ -125,7 +129,7 @@ export async function lookupCustomerForRepair(req, res) {
   const customerId = normalizeCustomerId(req.query.customerId);
   if (!isValidCustomerId(customerId)) {
     return res.status(400).json({
-      message: "Customer ID must be 10 or 11 numbers with V at the end (e.g. 1999236512V).",
+      message: CUSTOMER_ID_MSG,
     });
   }
 
