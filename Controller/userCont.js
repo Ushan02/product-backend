@@ -6,7 +6,21 @@ import {
   verifyGoogleCredential,
   mapGoogleVerifyError,
 } from "../lib/googleAuth.js";
-import { generateUniqueCustomerId } from "../lib/customerId.js";
+import { generateUniqueCustomerId, isValidCustomerId, normalizeCustomerId } from "../lib/customerId.js";
+
+function serializeUser(user) {
+  return {
+    _id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role,
+    isBlock: user.isBlock,
+    customerId: user.customerId || null,
+    authProvider: user.authProvider || "local",
+    img: user.img,
+  };
+}
 
 function buildAuthResponse(user, message = "Login successful.") {
   const token = jwt.sign(
@@ -237,6 +251,72 @@ export async function getUsers(req, res) {
   }
 }
 
+// PATCH /api/users/:id — update user details (admin only)
+export async function updateUserDetails(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+
+  const { firstName, lastName, email, customerId, password } = req.body;
+
+  try {
+    const user = await Users.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (firstName !== undefined) {
+      const trimmed = String(firstName).trim();
+      if (!trimmed) return res.status(400).json({ message: "First name is required." });
+      user.firstName = trimmed;
+    }
+
+    if (lastName !== undefined) {
+      const trimmed = String(lastName).trim();
+      if (!trimmed) return res.status(400).json({ message: "Last name is required." });
+      user.lastName = trimmed;
+    }
+
+    if (email !== undefined) {
+      const trimmed = String(email).trim().toLowerCase();
+      if (!trimmed) return res.status(400).json({ message: "Email is required." });
+      const duplicate = await Users.findOne({ email: trimmed, _id: { $ne: user._id } });
+      if (duplicate) {
+        return res.status(400).json({ message: "Email already in use." });
+      }
+      user.email = trimmed;
+    }
+
+    if (customerId !== undefined && user.role === "customer") {
+      const normalized = normalizeCustomerId(customerId);
+      if (!isValidCustomerId(normalized)) {
+        return res.status(400).json({ message: "Customer ID must be 10 or 11 digits ending with V." });
+      }
+      const duplicateId = await Users.findOne({ customerId: normalized, _id: { $ne: user._id } });
+      if (duplicateId) {
+        return res.status(400).json({ message: "Customer ID already in use." });
+      }
+      user.customerId = normalized;
+    }
+
+    if (password !== undefined && String(password).trim()) {
+      if (String(password).length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters." });
+      }
+      user.password = bcrypt.hashSync(String(password), 10);
+    }
+
+    await user.save();
+
+    res.json({
+      message: "User details updated.",
+      user: serializeUser(user),
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update user.", error: err.message });
+  }
+}
+
 // PATCH /api/users/:id/role — promote or demote user (admin only)
 export async function updateUserRole(req, res) {
   if (!isAdmin(req)) {
@@ -259,18 +339,18 @@ export async function updateUserRole(req, res) {
     }
 
     user.role = role;
+
+    if (role === "admin") {
+      user.customerId = null;
+    } else if (!user.customerId) {
+      user.customerId = await generateUniqueCustomerId();
+    }
+
     await user.save();
 
     res.json({
       message: role === "admin" ? "User promoted to admin." : "User role set to customer.",
-      user: {
-        _id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        isBlock: user.isBlock,
-      },
+      user: serializeUser(user),
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to update role.", error: err.message });
@@ -294,14 +374,7 @@ export async function toggleUserBlock(req, res) {
     await user.save();
     res.json({
       message: user.isBlock ? "User blocked." : "User unblocked.",
-      user: {
-        _id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        isBlock: user.isBlock,
-      },
+      user: serializeUser(user),
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to update user.", error: err.message });
