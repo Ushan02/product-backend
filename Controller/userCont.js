@@ -290,7 +290,9 @@ export async function updateUserDetails(req, res) {
     if (customerId !== undefined && user.role === "customer") {
       const normalized = normalizeCustomerId(customerId);
       if (!isValidCustomerId(normalized)) {
-        return res.status(400).json({ message: "Customer ID must be 10 or 11 digits ending with V." });
+        return res.status(400).json({
+          message: "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).",
+        });
       }
       const duplicateId = await Users.findOne({ customerId: normalized, _id: { $ne: user._id } });
       if (duplicateId) {
@@ -378,6 +380,34 @@ export async function toggleUserBlock(req, res) {
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to update user.", error: err.message });
+  }
+}
+
+// DELETE /api/users/:id — delete user (admin only)
+export async function deleteUser(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+
+  try {
+    const user = await Users.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (String(user._id) === String(req.user._id)) {
+      return res.status(400).json({ message: "You cannot delete your own account." });
+    }
+
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Admin accounts cannot be deleted." });
+    }
+
+    await Users.deleteOne({ _id: user._id });
+
+    res.json({ message: "User deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete user.", error: err.message });
   }
 }
 

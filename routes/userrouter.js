@@ -10,6 +10,7 @@ import {
   toggleUserBlock,
   updateUserRole,
   updateUserDetails,
+  deleteUser,
 } from "../Controller/userCont.js";
 import {
   sendPasswordOtp,
@@ -25,6 +26,7 @@ userRouter.get("/", getUsers);
 userRouter.patch("/:id/block", toggleUserBlock);
 userRouter.patch("/:id/role", updateUserRole);
 userRouter.patch("/:id", updateUserDetails);
+userRouter.delete("/:id", deleteUser);
 userRouter.post("/", createUser);
 userRouter.post("/login", loginUser);
 userRouter.post("/google", googleLogin);

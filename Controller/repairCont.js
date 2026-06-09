@@ -37,7 +37,9 @@ export async function createRepair(req, res) {
   const allowedStatuses = ["processing", "done", "cancelled"];
 
   if (!isValidCustomerId(customerId)) {
-    return res.status(400).json({ message: "Customer ID must be 10 or 11 digits ending with V." });
+    return res.status(400).json({
+      message: "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).",
+    });
   }
   if (!orderId || !productId) {
     return res.status(400).json({ message: "Order ID and product ID are required." });
@@ -122,7 +124,9 @@ export async function lookupCustomerForRepair(req, res) {
 
   const customerId = normalizeCustomerId(req.query.customerId);
   if (!isValidCustomerId(customerId)) {
-    return res.status(400).json({ message: "Customer ID must be 10 or 11 digits ending with V." });
+    return res.status(400).json({
+      message: "Customer ID must be 10 or 11 numbers ending with V (e.g. 1999236512V).",
+    });
   }
 
   try {
