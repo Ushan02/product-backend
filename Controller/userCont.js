@@ -101,7 +101,7 @@ export async function createUser(req, res) {
       role: assignedRole,
     });
 
-    if (assignedRole === "customer") {
+    if (assignedRole === "customer" && customerId) {
       const resolved = await resolveCustomerId(customerId);
       if (resolved.error) {
         return res.status(400).json({ message: resolved.error });
@@ -204,14 +204,13 @@ export async function googleLogin(req, res) {
       }
       await user.save();
     } else {
-      const resolved = await resolveCustomerId(customerId);
-      if (resolved.error) {
-        return res.status(400).json({
-          message:
-            resolved.error === CUSTOMER_ID_MSG
-              ? "Customer ID is required to create a new account."
-              : resolved.error,
-        });
+      let assignedCustomerId = null;
+      if (customerId) {
+        const resolved = await resolveCustomerId(customerId);
+        if (resolved.error) {
+          return res.status(400).json({ message: resolved.error });
+        }
+        assignedCustomerId = resolved.customerId;
       }
 
       user = await Users.create({
@@ -222,7 +221,7 @@ export async function googleLogin(req, res) {
         authProvider: "google",
         img: picture,
         role: "customer",
-        customerId: resolved.customerId,
+        ...(assignedCustomerId ? { customerId: assignedCustomerId } : {}),
       });
     }
 
