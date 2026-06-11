@@ -32,6 +32,7 @@ function serializeUser(user) {
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
+    phone: user.phone || "",
     role: user.role,
     isBlock: user.isBlock,
     customerId: user.customerId || null,
@@ -62,6 +63,7 @@ function buildAuthResponse(user, message = "Login successful.") {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
+      phone: user.phone || "",
       role: user.role,
       img: user.img,
       isBlock: user.isBlock,
@@ -249,6 +251,7 @@ export async function getCurrentUser(req, res) {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
+      phone: user.phone || "",
       role: user.role,
       img: user.img,
       isBlock: user.isBlock,
@@ -397,17 +400,13 @@ export async function toggleUserBlock(req, res) {
   }
 }
 
-// PATCH /api/users/me — update own profile (not customerId)
+// PATCH /api/users/me — update own profile (ID number only when not yet set)
 export async function updateMyProfile(req, res) {
   if (!req.user?._id) {
     return res.status(403).json({ message: "Please login and try again." });
   }
 
-  if (req.body.customerId !== undefined) {
-    return res.status(400).json({ message: "Customer ID cannot be updated from your profile." });
-  }
-
-  const { firstName, lastName, email } = req.body;
+  const { firstName, lastName, email, phone, customerId } = req.body;
 
   try {
     const user = await Users.findById(req.user._id);
@@ -437,6 +436,28 @@ export async function updateMyProfile(req, res) {
       user.email = trimmed;
     }
 
+    if (phone !== undefined) {
+      const digits = String(phone).replace(/\D/g, "");
+      if (digits && digits.length < 9) {
+        return res.status(400).json({ message: "Please enter a valid phone number." });
+      }
+      user.phone = digits;
+    }
+
+    if (customerId !== undefined && user.role === "customer") {
+      if (user.customerId) {
+        return res.status(400).json({ message: "ID number cannot be changed once it is set." });
+      }
+      const raw = String(customerId).trim();
+      if (raw) {
+        const resolved = await resolveCustomerId(raw, user._id);
+        if (resolved.error) {
+          return res.status(400).json({ message: resolved.error });
+        }
+        user.customerId = resolved.customerId;
+      }
+    }
+
     await user.save();
 
     const auth = buildAuthResponse(user, "Profile updated.");
@@ -463,6 +484,10 @@ export async function setMyCustomerId(req, res) {
     }
     if (user.role !== "customer") {
       return res.status(400).json({ message: "Only customer accounts use a customer ID." });
+    }
+
+    if (user.customerId) {
+      return res.status(400).json({ message: "ID number cannot be changed once it is set." });
     }
 
     const resolved = await resolveCustomerId(req.body.customerId, user._id);

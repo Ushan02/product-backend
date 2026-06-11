@@ -55,6 +55,12 @@ const usersSchema = mongoose.Schema(
             default:"https://share.google/EQKYEoTYMiXEIxPVz"
         },
 
+        phone : {
+            type : String,
+            trim : true,
+            default : "",
+        },
+
         customerId : {
             type : String,
             unique : true,
