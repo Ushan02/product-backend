@@ -43,6 +43,32 @@ export async function getContactMessages(req, res) {
   }
 }
 
+export async function getUnreadMessageCount(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+
+  try {
+    const count = await ContactMessage.countDocuments({ isRead: false });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function markAllContactMessagesRead(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+
+  try {
+    await ContactMessage.updateMany({ isRead: false }, { isRead: true });
+    res.json({ message: "All messages marked as read." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
 export async function markContactMessageRead(req, res) {
   if (!isAdmin(req)) {
     return res.status(403).json({ message: "Admin access required." });

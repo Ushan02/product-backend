@@ -69,7 +69,29 @@ export const getReviews = async (req, res) => {
   }
 };
 
-export const deleteReview = async (req, res) => {
+export const getUnreadReviewCount = async (req, res) => {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+  try {
+    const count = await Review.countDocuments({ isRead: false });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const markAllReviewsRead = async (req, res) => {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ message: "Admin access required." });
+  }
+  try {
+    await Review.updateMany({ isRead: false }, { isRead: true });
+    res.json({ message: "All reviews marked as read." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
   if (!isAdmin(req)) {
     return res.status(403).json({ message: "Admin access required." });
   }
