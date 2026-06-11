@@ -445,16 +445,19 @@ export async function updateMyProfile(req, res) {
     }
 
     if (customerId !== undefined && user.role === "customer") {
-      if (user.customerId) {
-        return res.status(400).json({ message: "ID number cannot be changed once it is set." });
-      }
       const raw = String(customerId).trim();
       if (raw) {
         const resolved = await resolveCustomerId(raw, user._id);
         if (resolved.error) {
           return res.status(400).json({ message: resolved.error });
         }
-        user.customerId = resolved.customerId;
+        if (user.customerId) {
+          if (user.customerId !== resolved.customerId) {
+            return res.status(400).json({ message: "ID number cannot be changed once it is set." });
+          }
+        } else {
+          user.customerId = resolved.customerId;
+        }
       }
     }
 
@@ -486,13 +489,20 @@ export async function setMyCustomerId(req, res) {
       return res.status(400).json({ message: "Only customer accounts use a customer ID." });
     }
 
-    if (user.customerId) {
-      return res.status(400).json({ message: "ID number cannot be changed once it is set." });
-    }
-
     const resolved = await resolveCustomerId(req.body.customerId, user._id);
     if (resolved.error) {
       return res.status(400).json({ message: resolved.error });
+    }
+
+    if (user.customerId) {
+      if (user.customerId === resolved.customerId) {
+        return res.json({
+          message: "Customer ID already saved.",
+          customerId: user.customerId,
+          user: serializeUser(user),
+        });
+      }
+      return res.status(400).json({ message: "ID number cannot be changed once it is set." });
     }
 
     user.customerId = resolved.customerId;
